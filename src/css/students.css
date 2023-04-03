@@ -1,0 +1,8 @@
+#upload-file{
+    display: none;
+}
+
+.console-row{
+    display: flex !important;
+    justify-content: start !important;
+}
