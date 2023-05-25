@@ -11,6 +11,7 @@ import { registerChartJs } from '../utils/register-chart-js';
 import { theme } from '../theme';
 import '../css/students.css'
 import 'bootstrap/dist/css/bootstrap.min.css';
+import 'react-toastify/dist/ReactToastify.css';
 
 
 registerChartJs();

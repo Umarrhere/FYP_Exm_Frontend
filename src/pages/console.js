@@ -8,8 +8,11 @@ import { Card, Col, Modal, Row } from 'react-bootstrap';
 import DataTable from 'react-data-table-component';
 import moment from 'moment';
 import { PictureAsPdf } from '@mui/icons-material';
-import autoTable from 'jspdf-autotable'
-import jsPDF from 'jsPDF'
+import autoTable from 'jspdf-autotable';
+import jsPDF from 'jsPDF';
+import converter from 'number-to-words'
+import { toast, ToastContainer } from 'react-toastify';
+import Swal from 'sweetalert2';
 
 
 const Page = () => {
@@ -23,7 +26,7 @@ const [showRepeaters, setShowRepeaters] = useState(false)
 const [repeater, setRepeater] = useState({id: null, label: null, selected: false})
 const [previousModal, setPreviousModal] = useState({show: false, data: [], search: null})
 // const [consoleData, setConsoleData] = useState([])
-const [dataRepeaters, setDataRepeaters] = useState([])
+// const [dataRepeaters, setDataRepeaters] = useState([])
 const [selectedRows, setSelectedRows] = useState([]);
 const [toggleCleared, setToggleCleared] = useState(false);
 const [data, setData] = useState([])
@@ -80,10 +83,10 @@ const [data, setData] = useState([])
       })
       
       console.log('responseData', response.data);
-      alert(response.data.message)
+      toast.info(response.data.message)
 
     }catch(err){
-      alert(JSON.stringify(err.response.data.message))
+      toast.error(err?.response?.data?.message)
     }
   }
 
@@ -99,10 +102,35 @@ const [data, setData] = useState([])
   }
 
   const SaveNProceed = () => {
-    if (window.confirm('Are You Sure To Save And Proceed?')) {
-      console.log('TODO: Save&Proceed');
-    
+    if(!data.length){
+      return toast.warning('Cannot Proceed Empty')
     }
+    Swal.fire({
+      title: 'Are You Sure To Save The Record?',
+      text: "You can still be able to edit the data.",
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#3085d6',
+      cancelButtonColor: '#d33',
+      confirmButtonText: 'Yes, Save it'
+    }).then((result) => {
+      if (result.isConfirmed) {
+        try{
+          // Save Record isCompleted to True
+          // Rerender the Screen
+          // Make Result Screen
+
+        }catch(err){
+          toast.error(err?.response?.data?.message)
+        }
+
+        Swal.fire(
+          'Saved',
+          'Data is Successfully Saved.',
+          'success'
+        )
+      }
+    })
   }
 
   const previousModelLoadData = (id) => {
@@ -118,10 +146,8 @@ const [data, setData] = useState([])
       }else{
         setShowRepeaters(false)
       }
-      
-      
       setPreviousModal({show: false})
-
+      toast.success('Data Loaded Successfully')
     })
     
   }
@@ -179,9 +205,11 @@ const [data, setData] = useState([])
 
       const columns = [];
       //making dynamic header
-      headers.map((key) => columns.push({ header: key.label }));
-      const rows = [];
-      data.map((key) =>
+      headers.filter(head => head.key === 'practical' ? course.creditHour.practical > 0 : true).map((key) => columns.push({ header: key.label }));
+      let rows = [];
+
+      if(course.creditHour.practical > 0){
+        data.filter(x => x.status === 'regular').map((key) =>
         rows.push(
           Object.values([
           key.regno,
@@ -195,22 +223,51 @@ const [data, setData] = useState([])
           ])
         )
       );
+      }else{
+        data.filter(x => x.status === 'regular').map((key) =>
+        rows.push(
+          Object.values([
+          key.regno,
+          key.name,
+          key.mid,
+          key.sessional,
+          key.final,
+          key.total,
+          key.remarks
+          ])
+        )
+      );
+      }
 
-      doc.setFontSize(11);
-      doc.addImage(img, "JPEG", 600, 15, 130, 50);
-      doc.text(30, 40, `Dept: ${selected.dept} \t Program: ${selected.program} \t Session: ${selected.session} \t Semester: ${selected.semester} \t Batch: ${selected.batch}`);
-      doc.text(30, 60, `Course-Code: ${course.code} \t Course-Title: ${course.name} \t Credit-Hour: (${course.creditHour.theory}/${course.creditHour.practical})`);
-      doc.text(30, 80, `Instructor: ${course.instructor}`);
+      doc.addImage(img, "JPEG", 650, 35, 90, 55);
+      doc.setFontSize(22);
+      doc.setFont('Roboto', 'bold', '600')
+      doc.text(230, 25, `Ghazi University, Dera Ghazi Khan`)
+      doc.setFontSize(10);
+      doc.text(530, 35, `Course Result`)
+      doc.text(650, 25, `Dated: ${moment().format('DD/MM/YYYY')}`)
       
-      doc.setFontSize(14);
-      doc.text(335, 80, "Marking Console");
-  
+      let x = 50, y = 52
+      doc.setFontSize(11);
+      // Row 1
+      doc.text(x, y, `Dept: ${selected.dept}`);
+      doc.text(x+=100, y, `Program: ${selected.program}`);
+      doc.text(x+=120, y, `Session: ${selected.session}`);
+      doc.text(x+=130, y, `Batch: ${selected.batch}`);
+      // Row 2
+      doc.text(x = 50, y+=17, `Semester: ${selected.semester}`);
+      doc.text(x+=100, y, `Course Title: ${course.name}`);
+      doc.text(x+=250, y, `Course-Code: ${course.code}`);
+      doc.text(x+=130, y, `Cr.Hr: ${course.creditHour.total}(${course.creditHour.theory}-${course.creditHour.practical})`);
+      // Row 3
+      doc.text(x = 50, y+=17, `Instructor: ${course.instructor}`);
+
       autoTable(doc, {
-        theme: 'striped',
-        margin: { top: 85 },
+        theme: 'grid',
+        margin: { top: 100 },
         styles: {
           halign: 'center'
-      },  
+         },  
         columnStyles: {
           0: { halign: "left" },
           1: { halign: 'left' },
@@ -229,10 +286,70 @@ const [data, setData] = useState([])
         columns: columns,
         body: rows,
       })
-      
+
+      // Repeaters
+      rows = [];
+     if(course.creditHour.practical > 0){
+        data.filter(x => x.status === 'repeater').map((key) =>
+        rows.push(
+          Object.values([
+          key.regno,
+          key.name,
+          key.mid,
+          key.sessional,
+          key.practical,
+          key.final,
+          key.total,
+          key.remarks
+          ])
+        )
+        );    
+     }else{
+        data.filter(x => x.status === 'repeater').map((key) =>
+        rows.push(
+          Object.values([
+          key.regno,
+          key.name,
+          key.mid,
+          key.sessional,
+          key.final,
+          key.total,
+          key.remarks
+          ])
+        )
+        );      
+     }
+
+
+      if(rows.length){
+        autoTable(doc, {
+          theme: 'striped',
+          columns: ['Repeaters'],
+          body: [],
+        })
+        autoTable(doc, {
+          theme: 'striped',
+          margin: { top: -50 },
+          styles: {
+            halign: 'center'
+           },  
+          columnStyles: {
+            0: { halign: "left" },
+            1: { halign: 'left' },
+            2: { halign: 'center' },
+            3: { halign: 'center' },
+            4: { halign: 'center' },
+            5: { halign: 'center' },
+            6: { halign: 'center' },
+            7: { halign: 'center' },
+          },          
+          columns: columns,
+          body: rows,
+        })
+      }
+   
       
       const pageCount = doc.internal.getNumberOfPages();
-
       for (var i = 1; i <= pageCount; i++) {
         // Go to page i
         doc.setPage(i);
@@ -244,12 +361,35 @@ const [data, setData] = useState([])
           null,
           "center"
         );
+        
+        if(i === pageCount){
+          // last page
+          doc.text(
+            `Course Instructor__________________`,
+            150,
+            623 - 50,
+            null,
+            null,
+            "center"
+          );
+          doc.text(
+            `Incharge/HOD__________________`,
+            630,
+            623 - 50,
+            null,
+            null,
+            "center"
+          );
+        }
+
       }
+      
+      // doc.setFontSize(10);
+      // doc.text(30, 755, "Assigned By___________________");
+      // doc.text(420, 755, "Approved by___________________");
+      
       doc.save("MarkingConsole.pdf");
   }
-
-
-
 
 
   const contextActions = useMemo(() => {
@@ -290,13 +430,15 @@ const [data, setData] = useState([])
     setData(
       data.map(x => {
       if(row.id === x.id){
+        const total = ((name === 'mid') && (parseFloat(value) + parseFloat(x.sessional) + (x.practical && parseFloat(x.practical)) + parseFloat(x.final))) ||
+                      ((name === 'sessional') && (parseFloat(x.mid) + parseFloat(value) + (x.practical && parseFloat(x.practical)) + parseFloat(x.final)))  ||
+                      ((name === 'practical') && (parseFloat(x.mid) + parseFloat(x.sessional) + parseFloat(value) + parseFloat(x.final))) ||
+                      ((name === 'final') && (parseFloat(x.mid) + parseFloat(x.sessional) + (x.practical && parseFloat(x.practical)) + parseFloat(value)))
         return {
           ...x,
           [name] : value,
-          total: ((name === 'mid') && (parseFloat(value) + parseFloat(x.sessional) + (x.practical && parseFloat(x.practical)) + parseFloat(x.final))) ||
-                 ((name === 'sessional') && (parseFloat(x.mid) + parseFloat(value) + (x.practical && parseFloat(x.practical)) + parseFloat(x.final)))  ||
-                 ((name === 'practical') && (parseFloat(x.mid) + parseFloat(x.sessional) + parseFloat(value) + parseFloat(x.final))) ||
-                 ((name === 'final') && (parseFloat(x.mid) + parseFloat(x.sessional) + (x.practical && parseFloat(x.practical)) + parseFloat(value)))
+          total,
+          remarks: `${converter.toWords(total).toUpperCase()} ${total > 0 ? 'ONLY' : ''}`   
         }
       }else{
         return{
@@ -364,11 +506,12 @@ const [data, setData] = useState([])
     },
     {
       name: 'Remarks',
-      selector: row => {
-        return(
-          <Input type='text' sx={{width: 60, textAlign: 'center'}} />
-        )
-      }
+      width: '160px',
+      selector: row => row.remarks.toUpperCase()
+        // return(
+        //   <Input type='text' sx={{width: 60, textAlign: 'center'}} />
+        // )
+      
     }
   ];
 
@@ -394,6 +537,7 @@ const [data, setData] = useState([])
 
   return (
     <>
+    <ToastContainer />
       <Head>
         <title>
           Marking Console | GravityHub
@@ -438,6 +582,7 @@ const [data, setData] = useState([])
           <Button variant="secondary" onClick={() => setPreviousModal({show: false})}> Close </Button>
           </Modal.Footer>
         </Modal>
+
         <Container maxWidth="lg">
         <Row className='mb-4'>
              <Button onClick={showPreviousModal} className='bg-dark' variant='contained' sx={{width: "100%"}}>Load Previous Data</Button> 
